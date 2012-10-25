@@ -13,7 +13,8 @@ mylevels <- function(x) if (is.factor(x)) levels(x) else 0
              proximity, oob.prox=proximity,
              norm.votes=TRUE, do.trace=FALSE,
              keep.forest=!is.null(y) && is.null(xtest), corr.bias=FALSE,
-             keep.inbag=FALSE, ...) {
+             keep.inbag=FALSE,
+			 lossmat=NULL,...) {
     addclass <- is.null(y)
     classRF <- addclass || is.factor(y)
     if (!classRF && length(unique(y)) <= 5) {
@@ -26,6 +27,10 @@ mylevels <- function(x) if (is.factor(x)) levels(x) else 0
     if (n == 0) stop("data (x) has 0 rows")
     x.row.names <- rownames(x)
     x.col.names <- if (is.null(colnames(x))) 1:ncol(x) else colnames(x)
+	
+	
+	##### ja: checking of lossmat.
+	if(is.null(lossmat)){  lossmat <- 0}  
 
     ## overcome R's lazy evaluation:
     keep.forest <- keep.forest
@@ -86,6 +91,10 @@ mylevels <- function(x) if (is.factor(x)) levels(x) else 0
     if (maxcat > 32)
         stop("Can not handle categorical predictors with more than 32 categories.")
 
+	
+	
+	
+	
     if (classRF) {
         nclass <- length(levels(y))
         ## Check for empty classes:
@@ -221,15 +230,15 @@ mylevels <- function(x) if (is.factor(x)) levels(x) else 0
                     sampsize = as.integer(sampsize),
                     strata = if (Stratify) as.integer(strata) else integer(1),
                     Options = as.integer(c(addclass,
-                    importance,
-                    localImp,
-                    proximity,
-                    oob.prox,
-                    do.trace,
-                    keep.forest,
-                    replace,
-                    Stratify,
-                    keep.inbag)),
+	                    importance,
+	                    localImp,
+	                    proximity,
+	                    oob.prox,
+	                    do.trace,
+	                    keep.forest,
+	                    replace,
+	                    Stratify,
+	                    keep.inbag)),
                     ntree = as.integer(ntree),
                     mtry = as.integer(mtry),
                     ipi = as.integer(ipi),
@@ -260,7 +269,8 @@ mylevels <- function(x) if (is.factor(x)) levels(x) else 0
                     proxts = proxts,
                     errts = error.test,
                     inbag = if (keep.inbag)
-                    matrix(integer(n * ntree), n) else integer(n),
+	                    matrix(integer(n * ntree), n) else integer(n),
+					lossmat = lossmat,
                     DUP=FALSE,
                     PACKAGE="randomForest")[-1]
         if (keep.forest) {
