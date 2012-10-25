@@ -35,6 +35,9 @@ void TestSetError(double *countts, int *jts, int *clts, int *jet, int ntest,
 /*  Define the R RNG for use from Fortran. */
 void F77_SUB(rrand)(double *r) { *r = unif_rand(); }
 
+/*
+ * ja: added lossmat
+ */
 void classRF(double *x, int *dimx, int *cl, int *ncl, int *cat, int *maxcat,
 	     int *sampsize, int *strata, int *Options, int *ntree, int *nvar,
 	     int *ipi, double *classwt, double *cut, int *nodesize,
@@ -44,7 +47,7 @@ void classRF(double *x, int *dimx, int *cl, int *ncl, int *cat, int *maxcat,
 	     int *nodeclass, double *xbestsplit, double *errtr,
 	     int *testdat, double *xts, int *clts, int *nts, double *countts,
 	     int *outclts, int *labelts, double *proxts, double *errts,
-             int *inbag) {
+             int *inbag, double* lossmat) {
     /******************************************************************
      *  C wrapper for random forests:  get input from R and drive
      *  the Fortran routines.
@@ -162,6 +165,9 @@ void classRF(double *x, int *dimx, int *cl, int *ncl, int *cat, int *maxcat,
     if (oobprox) {
 	oobpair = (int *) S_alloc(near*near, sizeof(int));
     }
+
+    //ja: see if we can print the lossmat
+    Rprintf("%f\n",lossmat[0]);
 
     /* Count number of cases in each class. */
     zeroInt(classFreq, nclass);
