@@ -1,0 +1,15 @@
+#1) Navigate to /Desktop/interpTree_workspace/
+#2) change source code etc in /rpart/...
+#3) open command line
+#4) run cleanup.bash
+#5) check things out in R:
+    
+library(randomForest, lib.loc="/home/alex/R")    
+library(mlbench)
+data(PimaIndiansDiabetes)
+pima <- PimaIndiansDiabetes
+
+#switch names of the pima set to match the kdd paper's.
+names(pima) <- c("pregnant","plasma","bp","thick","insulin","body","pedigree","age","diabetes")
+
+temp <- randomForest(diabetes~.,data=pima)  #prints 0 for now!
