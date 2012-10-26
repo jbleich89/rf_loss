@@ -12,4 +12,5 @@ pima <- PimaIndiansDiabetes
 #switch names of the pima set to match the kdd paper's.
 names(pima) <- c("pregnant","plasma","bp","thick","insulin","body","pedigree","age","diabetes")
 
-temp <- randomForest(diabetes~.,data=pima)  #prints 0 for now!
+temploss <- matrix(c(2,1,5,0),nrow=2)
+temp <- randomForest(diabetes~.,data=pima,lossmat=temploss)  #prints 0 for now!

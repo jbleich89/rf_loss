@@ -92,7 +92,7 @@ extern void F77_NAME(buildtree)(int *a, int *b, int *cl, int *cat,
 				int *ta, int *nrnodes, int *, 
 				int *, int *, int *, int *, int *, int *, 
 				double *, double *, double *,
-				int *, int *, int *); 
+				int *, int *, int *, double *lossmat); 
 
 /* Node status */
 #define NODE_TERMINAL -1

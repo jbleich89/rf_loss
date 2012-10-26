@@ -30,7 +30,13 @@ mylevels <- function(x) if (is.factor(x)) levels(x) else 0
 	
 	
 	##### ja: checking of lossmat.
-	if(is.null(lossmat)){  lossmat <- 0}  
+	if(is.null(lossmat)){  
+		lossmat <- 0
+	}
+	else{
+		##### ja: add error checking here regarding names, off-diags etc.
+		lossmat <- c(lossmat)  #coerce into a vector. col1,col2,col3,...
+	}  
 
     ## overcome R's lazy evaluation:
     keep.forest <- keep.forest

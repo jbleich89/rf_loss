@@ -16,12 +16,13 @@ c     not called are excluded.  Variables and arrays declared as double as
 c     needed.  Unused variables are deleted.
 c
 c     SUBROUTINE BUILDTREE
+c      ja: added lossmat to list of arguments
 
       subroutine buildtree(a, b, cl, cat, maxcat, mdim, nsample,
      1     nclass, treemap, bestvar, bestsplit, bestsplitnext, tgini,
      1     nodestatus,nodepop, nodestart, classpop, tclasspop,
      1     tclasscat,ta,nrnodes, idmove, ndsize, ncase, mtry, iv,
-     1     nodeclass, ndbigtree, win, wr, wl, mred, nuse, mind)
+     1     nodeclass, ndbigtree, win, wr, wl, mred, nuse, mind, lossmat)
 
 c     Buildtree consists of repeated calls to two subroutines, Findbestsplit
 c     and Movedata.  Findbestsplit does just that--it finds the best split of
@@ -38,6 +39,7 @@ c     ncur+2(right), ncur increases to ncur+2 and the next node to be split is
 c     numbered k+1.  When no more nodes can be split, buildtree returns to the
 c     main program.
 
+
       implicit double precision(a-h,o-z)
       integer a(mdim, nsample), cl(nsample), cat(mdim),
      1     treemap(2,nrnodes), bestvar(nrnodes),
@@ -49,7 +51,7 @@ c     main program.
 
       double precision tclasspop(nclass), classpop(nclass, nrnodes),
      1     tclasscat(nclass, 32), win(nsample), wr(nclass),
-     1     wl(nclass), tgini(mdim), xrand
+     1     wl(nclass), tgini(mdim), xrand, lossmat(nclass*nclass)
       integer msplit, ntie
 
       msplit = 0
@@ -65,6 +67,13 @@ c     main program.
       nodestart(1) = 1
       nodepop(1) = nuse
       nodestatus(1) = 2
+
+c      call realpr("lossmat", -1, lossmat, nclass)
+       do j=1,(nclass*nclass)		
+       		PRINT *, lossmat(j)
+       end do
+
+
 c     start main loop
       do 30 kbuild = 1, nrnodes
 c         call intpr("kbuild", 6, kbuild, 1)

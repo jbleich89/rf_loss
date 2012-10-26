@@ -167,7 +167,11 @@ void classRF(double *x, int *dimx, int *cl, int *ncl, int *cat, int *maxcat,
     }
 
     //ja: see if we can print the lossmat
-    Rprintf("%f\n",lossmat[0]);
+    
+	int i;
+	for(i = 0; i < (nclass*nclass); i++){
+		Rprintf("%f\n",lossmat[i]);
+	}
 
     /* Count number of cases in each class. */
     zeroInt(classFreq, nclass);
@@ -333,6 +337,7 @@ void classRF(double *x, int *dimx, int *cl, int *ncl, int *cat, int *maxcat,
 			memcpy(a, at, sizeof(int) * mdim * nsample);
       	    modA(a, &nuse, nsample, mdim, cat, *maxcat, ncase, jin);
 
+			//ja: added lossmat to list of arguments...
 			F77_CALL(buildtree)(a, b, cl, cat, maxcat, &mdim, &nsample,
 								&nclass,
 								treemap + 2*idxByNnode, bestvar + idxByNnode,
@@ -342,7 +347,7 @@ void classRF(double *x, int *dimx, int *cl, int *ncl, int *cat, int *maxcat,
 								ta, nrnodes, idmove, &ndsize, ncase,
 								&mtry, varUsed, nodeclass + idxByNnode,
 								ndbigtree + jb, win, wr, wl, &mdim,
-								&nuse, mind);
+								&nuse, mind, lossmat);
 			/* if the "tree" has only the root node, start over */
 		} while (ndbigtree[jb] == 1);
 
