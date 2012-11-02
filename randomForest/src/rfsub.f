@@ -55,11 +55,15 @@ c     main program.
       integer msplit, ntie
 
       msplit = 0
+c     zerv(a,b)  makes a =(integer 0-vector of length b)
       call zerv(nodestatus,nrnodes)
       call zerv(nodestart,nrnodes)
       call zerv(nodepop,nrnodes)
+c     zermr(a,b,c) makes a=(bxc matrix of double precision 0's)
       call zermr(classpop,nclass,nrnodes)
 
+c	   insantiate the first column (root node) of classpop with the passed
+c      tclasspop values.
       do j=1,nclass
          classpop(j, 1) = tclasspop(j)
       end do
@@ -68,10 +72,10 @@ c     main program.
       nodepop(1) = nuse
       nodestatus(1) = 2
 
-c      call realpr("lossmat", -1, lossmat, nclass)
-       do j=1,(nclass*nclass)		
-       		PRINT *, lossmat(j)
-       end do
+c      ja: check that we can pass in a lossmat... looks good!
+c      do j=1,(nclass*nclass)		
+c       		PRINT *, lossmat(j)
+c      end do
 
 
 c     start main loop
@@ -203,24 +207,32 @@ c     dec. in impurity.  If msplit is numerical, nsplit is the case number
 c     of value of msplit split on, and nsplitnext is the case number of the
 c     next larger value of msplit.  If msplit is categorical, then nsplit is
 c     the coding into an integer of the categories going left.
+c
+c	  ja: added passing of lossmat
+
       subroutine findbestsplit(a, b, cl, mdim, nsample, nclass, cat,
      1     maxcat, ndstart, ndend, tclasspop, tclasscat, msplit,
      2     decsplit, nbest, ncase, jstat, mtry, win, wr, wl,
-     3     mred, mind)
+     3     mred, mind, lossmat)
       implicit double precision(a-h,o-z)
       integer a(mdim,nsample), cl(nsample), cat(mdim),
      1     ncase(nsample), b(mdim,nsample), nn, j
       double precision tclasspop(nclass), tclasscat(nclass,32), dn(32),
-     1     win(nsample), wr(nclass), wl(nclass), xrand
+     1     win(nsample), wr(nclass), wl(nclass), xrand, lossmat(nclass*nclass)
       integer mind(mred), ncmax, ncsplit,nhit, ntie
       ncmax = 10
       ncsplit = 512
 c     compute initial values of numerator and denominator of Gini
+c      
       pno = 0.0
       pdo = 0.0
       do j = 1, nclass
-         pno = pno + tclasspop(j) * tclasspop(j)
-         pdo = pdo + tclasspop(j)
+        pdo = pdo + tclasspop(j)
+	do k = 1, nclass
+c         pno = pno + tclasspop(j) * tclasspop(j) <---  breiman's original code
+c         ja: our new code:  
+	  pno = pno + tclasspop(j)*tclasspop(k)*lossmat((j-1)*nclass + k)
+	end do
       end do
       crit0 = pno / pdo
       jstat = 0
@@ -233,6 +245,7 @@ c     start main loop through variables to find best split
       nn = mred
 c     sampling mtry variables w/o replacement.
       do mt = 1, mtry
+c        pick a random predictor to try to split on:
          call rrand(xrand)
          j = int(nn * xrand) + 1
          mvar = mind(j)
@@ -251,7 +264,9 @@ c     Split on a numerical predictor.
                wr(j) = tclasspop(j)
             end do
             ntie = 1
+c			iterate through split points, shifting each observation right->left:
             do nsp = ndstart, ndend-1
+c			   nc = class of the observation that's now to the left
                nc = a(mvar, nsp)
                u = win(nc)
                k = cl(nc)

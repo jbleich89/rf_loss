@@ -137,7 +137,7 @@ mylevels <- function(x) if (is.factor(x)) levels(x) else 0
             if (any(classwt <= 0)) stop("classwt must be positive")
             ipi <- 1
         } else {
-            classwt <- rep(1, nclass)
+            classwt <- rep(1, nclass)  #default is to set all class prior's to 1 if nothing is passed.
             ipi <- 0
         }
     } else addclass <- FALSE

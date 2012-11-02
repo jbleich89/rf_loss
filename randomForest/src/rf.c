@@ -131,7 +131,7 @@ void classRF(double *x, int *dimx, int *cl, int *ncl, int *cat, int *maxcat,
     tgini =      (double *) S_alloc(mdim, sizeof(double));
     wl =         (double *) S_alloc(nclass, sizeof(double));
     wr =         (double *) S_alloc(nclass, sizeof(double));
-    classpop =   (double *) S_alloc(nclass* *nrnodes, sizeof(double));
+    classpop =   (double *) S_alloc(nclass* *nrnodes, sizeof(double)); //this gets allocated and then we pass it to Fortran
     tclasscat =  (double *) S_alloc(nclass*32, sizeof(double));
     tclasspop =  (double *) S_alloc(nclass, sizeof(double));
     tx =         (double *) S_alloc(nsample, sizeof(double));
@@ -299,17 +299,17 @@ void classRF(double *x, int *dimx, int *cl, int *ncl, int *cat, int *maxcat,
 					if (replace) {
 						for (n = 0; n < *sampsize; ++n) {
 							k = unif_rand() * nsample;
-							tclasspop[cl[k] - 1] += classwt[cl[k]-1];
-							win[k] += classwt[cl[k]-1];
-							jin[k] = 1;
+							tclasspop[cl[k] - 1] += classwt[cl[k]-1]; //total #of obs in each class in the boot sample
+							win[k] += classwt[cl[k]-1];  //number of times each obs appears in our boot sample (wgted by class)
+							jin[k] = 1;   //are you in or not?
 						}
 					} else {
 						for (n = 0; n < nsample; ++n) nind[n] = n;
-						last = nsample - 1;
+						last = nsample - 1;  //size of bootstrap sample - 1
 						for (n = 0; n < *sampsize; ++n) {
-							ktmp = (int) (unif_rand() * (last+1));
-							k = nind[ktmp];
-                            swapInt(nind[ktmp], nind[last]);
+							ktmp = (int) (unif_rand() * (last+1)); //a random index from 1,...n
+							k = nind[ktmp];    //class of the random observation
+                            				swapInt(nind[ktmp], nind[last]);
 							last--;
 							tclasspop[cl[k] - 1] += classwt[cl[k]-1];
 							win[k] += classwt[cl[k]-1];
