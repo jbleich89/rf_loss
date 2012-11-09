@@ -103,7 +103,7 @@ void classRF(double *x, int *dimx, int *cl, int *ncl, int *cat, int *maxcat,
     double av=0.0, delta=0.0;
 
     double *tgini, *tx, *wl, *classpop, *tclasscat, *tclasspop, *win,
-        *tp, *wr;
+        *tp, *wr, *lossmatrix;
 
     addClass = Options[0];
     imp      = Options[1];
@@ -167,11 +167,13 @@ void classRF(double *x, int *dimx, int *cl, int *ncl, int *cat, int *maxcat,
     }
 
     //ja: see if we can print the lossmat
-    
+    //(we can)
+	/*
 	int i;
 	for(i = 0; i < (nclass*nclass); i++){
 		Rprintf("%f\n",lossmat[i]);
 	}
+	/*
 
     /* Count number of cases in each class. */
     zeroInt(classFreq, nclass);

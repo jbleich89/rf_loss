@@ -12,5 +12,14 @@ pima <- PimaIndiansDiabetes
 #switch names of the pima set to match the kdd paper's.
 names(pima) <- c("pregnant","plasma","bp","thick","insulin","body","pedigree","age","diabetes")
 
-temploss <- matrix(c(2,1,5,0),nrow=2)
-temp <- randomForest(diabetes~.,data=pima,lossmat=temploss)  #prints 0 for now!
+lmat <- matrix(c(2,1,5,0),nrow=2)
+regularloss <- matrix(c(0,1,1,0),nrow=2)
+noloss <- randomForest(diabetes~.,data=pima[1:500,],lossmat=regularloss,ntree=5000)  #prints 0 for now!
+preds <- predict(noloss,pima[501:768,])
+act <- pima$diab[501:768]
+table(preds,act)
+
+withloss <- randomForest(diabetes~.,data=pima,lossmat=lmat)  #prints 0 for now!
+noloss <- randomForest(diabetes~.,data=pima,lossmat=regularloss)  #prints 0 for now!
+
+head(predict(noloss,type="prob"))

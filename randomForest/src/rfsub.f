@@ -51,7 +51,7 @@ c     main program.
 
       double precision tclasspop(nclass), classpop(nclass, nrnodes),
      1     tclasscat(nclass, 32), win(nsample), wr(nclass),
-     1     wl(nclass), tgini(mdim), xrand, lossmat(nclass*nclass)
+     1     wl(nclass), tgini(mdim), xrand, lossmat(nclass**2)
       integer msplit, ntie
 
       msplit = 0
@@ -77,7 +77,6 @@ c      do j=1,(nclass*nclass)
 c       		PRINT *, lossmat(j)
 c      end do
 
-
 c     start main loop
       do 30 kbuild = 1, nrnodes
 c         call intpr("kbuild", 6, kbuild, 1)
@@ -94,7 +93,7 @@ c     initialize for next call to findbestsplit
 
          call findbestsplit(a,b,cl,mdim,nsample,nclass,cat,maxcat,
      1        ndstart, ndend,tclasspop,tclasscat,msplit, decsplit,
-     1        nbest,ncase, jstat,mtry,win,wr,wl,mred,mind)
+     1        nbest,ncase, jstat,mtry,win,wr,wl,mred,mind,lossmat)
 c         call intpr("jstat", 5, jstat, 1)
 c         call intpr("msplit", 6, msplit, 1)
 c     If the node is terminal, move on.  Otherwise, split.
@@ -218,20 +217,28 @@ c	  ja: added passing of lossmat
       integer a(mdim,nsample), cl(nsample), cat(mdim),
      1     ncase(nsample), b(mdim,nsample), nn, j
       double precision tclasspop(nclass), tclasscat(nclass,32), dn(32),
-     1     win(nsample), wr(nclass), wl(nclass), xrand, lossmat(nclass*nclass)
+     1     win(nsample), wr(nclass), wl(nclass), lossmat(nclass**2), xrand
       integer mind(mred), ncmax, ncsplit,nhit, ntie
       ncmax = 10
       ncsplit = 512
 c     compute initial values of numerator and denominator of Gini
-c      
+c
+c      ja: check that we can pass in a lossmat... looks good!
+c      do j=1,(nclass*nclass)		
+c       		PRINT *, lossmat(j)
+c      end do
+
       pno = 0.0
       pdo = 0.0
+c      do j = 1, nclass
+c	pdo = pdo + tclasspop(j)
+c	pno = pno + tclasspop(j) * tclasspop(j)
+c      end do
       do j = 1, nclass
         pdo = pdo + tclasspop(j)
 	do k = 1, nclass
-c         pno = pno + tclasspop(j) * tclasspop(j) <---  breiman's original code
-c         ja: our new code:  
 	  pno = pno + tclasspop(j)*tclasspop(k)*lossmat((j-1)*nclass + k)
+c	  pno = pno + tclasspop(j)*tclasspop(k)
 	end do
       end do
       crit0 = pno / pdo
@@ -266,16 +273,36 @@ c     Split on a numerical predictor.
             ntie = 1
 c			iterate through split points, shifting each observation right->left:
             do nsp = ndstart, ndend-1
-c			   nc = class of the observation that's now to the left
+c              ja: nc is without question, the index of the observation we're moving right-->left
+c              ja: win(nc) is the number of times this index appears in this tree's bootstrap sample.
+c              k = class of the observation that's now to the left
+c              wl(k) and wr(k) hold weight (total count if wt=1) of class of obs moving to the left
+c              BEFORE we actually move it.
+c               nc = a(mvar, nsp)
+c              u = win(nc)
+c               k = cl(nc)
+c               rln = rln + u * (2 * wl(k) + u)
+c               rrn = rrn + u * (-2 * wr(k) + u)
+c               rld = rld + u
+c               rrd = rrd - u
+c               wl(k) = wl(k) + u
+c               wr(k) = wr(k) - uc              
                nc = a(mvar, nsp)
-               u = win(nc)
                k = cl(nc)
-               rln = rln + u * (2 * wl(k) + u)
-               rrn = rrn + u * (-2 * wr(k) + u)
-               rld = rld + u
-               rrd = rrd - u
-               wl(k) = wl(k) + u
-               wr(k) = wr(k) - u
+	       u = 0
+	       do j = 1, nclass
+c 	            u = u + wr(j) * win(nc)  * lossmat((j-1) * nclass + k)
+c		    u = u + wr(j) * win(nc) * lossmat((k-1) * nclass + j)
+ 	            u = u + wr(j) * win(nc)
+		    u = u + wr(j) * win(nc)
+	       end do
+               rln = rln + u
+               rrn = rrn - u
+               rld = rld + win(nc)
+               rrd = rrd - win(nc)
+c              update wl and wr by adding the wt
+               wl(k) = wl(k) + win(nc)
+               wr(k) = wr(k) - win(nc)
                if (b(mvar, nc) .lt. b(mvar, a(mvar, nsp + 1))) then
 c     If neither nodes is empty, check the split.
                   if (dmin1(rrd, rld) .gt. 1.0e-5) then
