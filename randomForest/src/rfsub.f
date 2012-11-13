@@ -62,7 +62,7 @@ c     zerv(a,b)  makes a =(integer 0-vector of length b)
 c     zermr(a,b,c) makes a=(bxc matrix of double precision 0's)
       call zermr(classpop,nclass,nrnodes)
 
-c	   insantiate the first column (root node) of classpop with the passed
+c      insantiate the first column (root node) of classpop with the passed
 c      tclasspop values.
       do j=1,nclass
          classpop(j, 1) = tclasspop(j)
@@ -91,12 +91,19 @@ c     initialize for next call to findbestsplit
          end do
          jstat = 0
 
+c        ja: msplit is the number (1...p) of the predictor that's chosen
+c        as the best split
          call findbestsplit(a,b,cl,mdim,nsample,nclass,cat,maxcat,
      1        ndstart, ndend,tclasspop,tclasscat,msplit, decsplit,
      1        nbest,ncase, jstat,mtry,win,wr,wl,mred,mind,lossmat)
 c         call intpr("jstat", 5, jstat, 1)
 c         call intpr("msplit", 6, msplit, 1)
 c     If the node is terminal, move on.  Otherwise, split.
+         PRINT *, "---msplit,decsplit,tgini(msplit),jstat:-----"
+         PRINT *, msplit
+         PRINT *, decsplit
+         PRINT *, tgini(msplit)
+         PRINT *, jstat
          if (jstat .eq. -1) then
             nodestatus(kbuild) = -1
             goto 30
@@ -217,12 +224,13 @@ c	  ja: added passing of lossmat
       integer a(mdim,nsample), cl(nsample), cat(mdim),
      1     ncase(nsample), b(mdim,nsample), nn, j
       double precision tclasspop(nclass), tclasscat(nclass,32), dn(32),
-     1     win(nsample), wr(nclass), wl(nclass), lossmat(nclass**2), xrand
+     1     win(nsample), wr(nclass), wl(nclass), lossmat(nclass**2), xrand, temp
       integer mind(mred), ncmax, ncsplit,nhit, ntie
       ncmax = 10
       ncsplit = 512
+c     ja: tclasspop(j)= #of observations in node t that have class j
 c     compute initial values of numerator and denominator of Gini
-c
+c      
 c      ja: check that we can pass in a lossmat... looks good!
 c      do j=1,(nclass*nclass)		
 c       		PRINT *, lossmat(j)
@@ -234,13 +242,18 @@ c      do j = 1, nclass
 c	pdo = pdo + tclasspop(j)
 c	pno = pno + tclasspop(j) * tclasspop(j)
 c      end do
+c      PRINT *, "breiman"
+c      PRINT *, pdo**2
+c      PRINT *, pno
+c      pno = 0.0
       do j = 1, nclass
         pdo = pdo + tclasspop(j)
 	do k = 1, nclass
 	  pno = pno + tclasspop(j)*tclasspop(k)*lossmat((j-1)*nclass + k)
-c	  pno = pno + tclasspop(j)*tclasspop(k)
 	end do
       end do
+c      PRINT *, pno
+c     ja: crit0 = gini at the root, w/out any splits.
       crit0 = pno / pdo
       jstat = 0
 
@@ -288,21 +301,20 @@ c               rrd = rrd - u
 c               wl(k) = wl(k) + u
 c               wr(k) = wr(k) - uc              
                nc = a(mvar, nsp)
+	       u = win(nc)	
                k = cl(nc)
-	       u = 0
+               temp = 0
 	       do j = 1, nclass
-c 	            u = u + wr(j) * win(nc)  * lossmat((j-1) * nclass + k)
-c		    u = u + wr(j) * win(nc) * lossmat((k-1) * nclass + j)
- 	            u = u + wr(j) * win(nc)
-		    u = u + wr(j) * win(nc)
+		    temp = temp + u*wr(j)*lossmat((j-1) * nclass + k)
+		    temp = temp + u*wr(j)*lossmat((k-1) * nclass + j)
 	       end do
-               rln = rln + u
-               rrn = rrn - u
-               rld = rld + win(nc)
-               rrd = rrd - win(nc)
+               rln = rln + temp
+               rrn = rrn - temp
+               rld = rld + u
+               rrd = rrd - u
 c              update wl and wr by adding the wt
-               wl(k) = wl(k) + win(nc)
-               wr(k) = wr(k) - win(nc)
+               wl(k) = wl(k) + u
+               wr(k) = wr(k) - u
                if (b(mvar, nc) .lt. b(mvar, a(mvar, nsp + 1))) then
 c     If neither nodes is empty, check the split.
                   if (dmin1(rrd, rld) .gt. 1.0e-5) then
@@ -359,6 +371,10 @@ c               critmax = -1.0e25
          end if
       end do
       if (critmax .lt. -1.0e10 .or. msplit .eq. 0) jstat = -1
+c     ja: still works...
+      PRINT *, "------------- critmax, crit0------"
+      PRINT *, critmax
+      PRINT *, crit0
       decsplit = critmax - crit0
       return
       end

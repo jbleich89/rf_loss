@@ -28,16 +28,18 @@ mylevels <- function(x) if (is.factor(x)) levels(x) else 0
     x.row.names <- rownames(x)
     x.col.names <- if (is.null(colnames(x))) 1:ncol(x) else colnames(x)
 	
-	
 	##### ja: checking of lossmat.
-	if(is.null(lossmat)){  
-		lossmat <- 0
+	if(is.null(lossmat)){
+		nclass <- length(levels(y))
+		lossmat <- matrix(-1,ncol=nclass,nrow=nclass); diag(lossmat)=0
+		lossmat <- c(lossmat)
 	}
 	else{
 		##### ja: add error checking here regarding names, off-diags etc.
-		lossmat <- c(lossmat)  #coerce into a vector. col1,col2,col3,...
+		lossmat <- -1*c(lossmat)  #coerce into a vector. col1,col2,col3,...
 	}  
-
+	
+	
     ## overcome R's lazy evaluation:
     keep.forest <- keep.forest
 
