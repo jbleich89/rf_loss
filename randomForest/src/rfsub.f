@@ -39,7 +39,6 @@ c     ncur+2(right), ncur increases to ncur+2 and the next node to be split is
 c     numbered k+1.  When no more nodes can be split, buildtree returns to the
 c     main program.
 
-
       implicit double precision(a-h,o-z)
       integer a(mdim, nsample), cl(nsample), cat(mdim),
      1     treemap(2,nrnodes), bestvar(nrnodes),
@@ -88,38 +87,26 @@ c     initialize for next call to findbestsplit
          ndend = ndstart + nodepop(kbuild) - 1
          do j = 1, nclass
             tclasspop(j) = classpop(j,kbuild)
+	    PRINT *, tclasspop(j)
          end do
          jstat = 0
-
-c        ja: msplit is the number (1...p) of the predictor that's chosen
-c        as the best split.
-c        ja: nbest is the split point of the variable.
-         call findbestsplitja(a,b,cl,mdim,nsample,nclass,cat,maxcat,
-     1        ndstart, ndend,tclasspop,tclasscat,msplit, decsplit,
-     1        nbest,ncase, jstat,mtry,win,wr,wl,mred,mind,lossmat)
-c         call intpr("jstat", 5, jstat, 1)
-c         call intpr("msplit", 6, msplit, 1)
-c     If the node is terminal, move on.  Otherwise, split.
-         PRINT *, "JA---msplit,nbest,decsplit,tgini(msplit),jstat:---JA"
-         PRINT *, msplit
-	 PRINT *, nbest
-         PRINT *, decsplit
-         PRINT *, tgini(msplit)
-         PRINT *, jstat
-
-
+	
+c         call findbestsplitcombined(a,b,cl,mdim,nsample,nclass,cat,maxcat,
+c     1        ndstart, ndend,tclasspop,tclasscat,msplit, decsplit,
+c     1        nbest,ncase, jstat,mtry,win,wr,wl,mred,mind)
          call findbestsplit(a,b,cl,mdim,nsample,nclass,cat,maxcat,
      1        ndstart, ndend,tclasspop,tclasscat,msplit, decsplit,
-     1        nbest,ncase, jstat,mtry,win,wr,wl,mred,mind)
+     1        nbest,ncase, jstat,mtry,win,wr,wl,mred,mind,lossmat)
+
 c         call intpr("jstat", 5, jstat, 1)
 c         call intpr("msplit", 6, msplit, 1)
 c     If the node is terminal, move on.  Otherwise, split.
-         PRINT *, "REAL--msplit,decsplit,tgini(msplit),jstat:---REAL"
-         PRINT *, msplit
-	 PRINT *, nbest
-         PRINT *, decsplit
-         PRINT *, tgini(msplit)
-         PRINT *, jstat
+c         PRINT *, "REAL--msplit,decsplit,tgini(msplit),jstat:---REAL"
+c         PRINT *, msplit
+c	 PRINT *, nbest
+c         PRINT *, decsplit
+c         PRINT *, tgini(msplit)
+c         PRINT *, jstat
          if (jstat .eq. -1) then
             nodestatus(kbuild) = -1
             goto 30
@@ -223,178 +210,6 @@ c         call dblepr("pop2", 4, classpop(2, kn), 1)
       return
       end
 
-c     SUBROUTINE FINDBESTSPLITJA : our modifications
-c     For the best split, msplit is the variable split on. decsplit is the
-c     dec. in impurity.  If msplit is numerical, nsplit is the case number
-c     of value of msplit split on, and nsplitnext is the case number of the
-c     next larger value of msplit.  If msplit is categorical, then nsplit is
-c     the coding into an integer of the categories going left.
-c
-c	  ja: added passing of lossmat
-
-      subroutine findbestsplitja(a, b, cl, mdim, nsample, nclass, cat,
-     1     maxcat, ndstart, ndend, tclasspop, tclasscat, msplit,
-     2     decsplit, nbest, ncase, jstat, mtry, win, wr, wl,
-     3     mred, mind, lossmat)
-      implicit double precision(a-h,o-z)
-      integer a(mdim,nsample), cl(nsample), cat(mdim),
-     1     ncase(nsample), b(mdim,nsample), nn, j
-      double precision tclasspop(nclass), tclasscat(nclass,32), dn(32),
-     1     win(nsample), wr(nclass), wl(nclass), lossmat(nclass**2), xrand, temp
-      integer mind(mred), ncmax, ncsplit,nhit, ntie
-      ncmax = 10
-      ncsplit = 512
-c     ja: tclasspop(j)= #of observations in node t that have class j
-c     compute initial values of numerator and denominator of Gini
-c      
-c      ja: check that we can pass in a lossmat... looks good!
-c      do j=1,(nclass*nclass)		
-c       		PRINT *, lossmat(j)
-c      end do
-
-      pno = 0.0
-      pdo = 0.0
-      do j = 1, nclass
-	pdo = pdo + tclasspop(j)
-	pno = pno + tclasspop(j) * tclasspop(j)
-      end do
-c      PRINT *, "breiman"
-c      PRINT *, pdo**2
-c      PRINT *, pno
-c      pno = 0.0
-c      do j = 1, nclass
-c        pdo = pdo + tclasspop(j)
-c	do k = 1, nclass
-c	  pno = pno + tclasspop(j)*tclasspop(k)*lossmat((j-1)*nclass + k)
-c	end do
-c      end do
-c      PRINT *, pno
-c     ja: crit0 = gini at the root, w/out any splits.
-      crit0 = pno / pdo
-      jstat = 0
-
-c     start main loop through variables to find best split
-      critmax = -1.0e25
-      do k = 1, mred
-         mind(k) = k
-      end do
-      nn = mred
-c     sampling mtry variables w/o replacement.
-      do mt = 1, mtry
-c        pick a random predictor to try to split on:
-         call rrand(xrand)
-         j = int(nn * xrand) + 1
-         mvar = mind(j)
-         mind(j) = mind(nn)
-         mind(nn) = mvar
-         nn = nn - 1
-         lcat = cat(mvar)
-         if (lcat .eq. 1) then
-c     Split on a numerical predictor.
-            rrn = pno
-            rrd = pdo
-            rln = 0
-            rld = 0
-            call zervr(wl, nclass)
-            do j = 1, nclass
-               wr(j) = tclasspop(j)
-            end do
-            ntie = 1
-c	   iterate through split points, shifting each observation right->left:
-            do nsp = ndstart, ndend-1
-c              ja: nc is without question, the index of the observation we're moving right-->left
-c              ja: win(nc) is the number of times this index appears in this tree's bootstrap sample.
-c              k = class of the observation that's now to the left
-c              wl(k) and wr(k) hold weight (total count if wt=1) of class of obs moving to the left
-c              BEFORE we actually move it.
-               nc = a(mvar, nsp)
-               u = win(nc)
-               k = cl(nc)
-               rln = rln + u * (2 * wl(k) + u)
-               rrn = rrn + u * (-2 * wr(k) + u)
-               rld = rld + u
-               rrd = rrd - u
-               wl(k) = wl(k) + u
-               wr(k) = wr(k) - u              
-c               nc = a(mvar, nsp)
-c	       u = win(nc)	
-c               k = cl(nc)
-c               temp = 0
-c	       do j = 1, nclass
-c		    temp = temp + u*wr(j)*lossmat((j-1) * nclass + k)
-c		    temp = temp + u*wr(j)*lossmat((k-1) * nclass + j)
-c	       end do
-c               rln = rln + temp
-c               rrn = rrn - temp
-c               rld = rld + u
-c               rrd = rrd - u
-c              update wl and wr by adding the wt
-c               wl(k) = wl(k) + u
-c               wr(k) = wr(k) - u
-               if (b(mvar, nc) .lt. b(mvar, a(mvar, nsp + 1))) then
-c     If neither nodes is empty, check the split.
-                  if (dmin1(rrd, rld) .gt. 1.0e-5) then
-                     crit = (rln / rld) + (rrn / rrd)
-                     if (crit .gt. critmax) then
-                        nbest = nsp
-                        critmax = crit
-                        msplit = mvar
-                        ntie = 1
-                     end if
-c     Break ties at random:
-                     if (crit .eq. critmax) then
-                        call rrand(xrand)
-                        if (xrand .lt. 1.0 / ntie) then
-                           nbest = nsp
-                           critmax = crit
-                           msplit = mvar
-                        end if
-                        ntie = ntie + 1
-                     end if                     
-                  end if
-               end if
-            end do
-         else
-c     Split on a categorical predictor.  Compute the decrease in impurity.
-            call zermr(tclasscat, nclass, 32)
-            do nsp = ndstart, ndend
-               nc = ncase(nsp)
-               l = a(mvar, ncase(nsp))
-               tclasscat(cl(nc), l) = tclasscat(cl(nc), l) + win(nc)
-            end do
-            nnz = 0
-            do i = 1, lcat
-               su = 0
-               do j = 1, nclass
-                  su = su + tclasscat(j, i)
-               end do
-               dn(i) = su
-               if(su .gt. 0) nnz = nnz + 1
-            end do
-            nhit = 0
-            if (nnz .gt. 1) then
-               if (nclass .eq. 2 .and. lcat .gt. ncmax) then
-                  call catmaxb(pdo, tclasscat, tclasspop, nclass,
-     &                 lcat, nbest, critmax, nhit, dn)
-               else
-                  call catmax(pdo, tclasscat, tclasspop, nclass, lcat,
-     &                 nbest, critmax, nhit, maxcat, ncmax, ncsplit)
-               end if
-               if (nhit .eq. 1) msplit = mvar
-c            else
-c               critmax = -1.0e25
-            end if
-         end if
-      end do
-      if (critmax .lt. -1.0e10 .or. msplit .eq. 0) jstat = -1
-c     ja: still works...
-c      PRINT *, "------------- critmax, crit0------"
-c      PRINT *, critmax
-c      PRINT *, crit0
-      decsplit = critmax - crit0
-c      decsplit = crit0 - critmax
-      return
-      end
 
 C    ===============================================================
 c    Original findbestsplit routine.
@@ -402,12 +217,12 @@ c
       subroutine findbestsplit(a, b, cl, mdim, nsample, nclass, cat,
      1     maxcat, ndstart, ndend, tclasspop, tclasscat, msplit,
      2     decsplit, nbest, ncase, jstat, mtry, win, wr, wl,
-     3     mred, mind)
+     3     mred, mind, lossmat)
       implicit double precision(a-h,o-z)
       integer a(mdim,nsample), cl(nsample), cat(mdim),
      1     ncase(nsample), b(mdim,nsample), nn, j
       double precision tclasspop(nclass), tclasscat(nclass,32), dn(32),
-     1     win(nsample), wr(nclass), wl(nclass), xrand
+     1     win(nsample), wr(nclass), wl(nclass), lossmat(nclass**2), xrand
       integer mind(mred), ncmax, ncsplit,nhit, ntie
       ncmax = 10
       ncsplit = 512
@@ -421,8 +236,24 @@ c     compute initial values of numerator and denominator of Gini
       crit0 = pno / pdo
       jstat = 0
 
+c     JA:
+      nbestj = 0
+      msplitj = 0	
+      pnoj = 0.0
+      pdoj = 0.0
+      do j = 1, nclass
+        pdoj = pdoj + tclasspop(j)
+	do k = 1, nclass
+	  pnoj = pnoj+ tclasspop(j)*tclasspop(k)*lossmat((j-1)*nclass + k)
+	end do
+      end do
+      crit0j = pnoj / pdoj
+c      jstatj = 0
+c      PRINT *, crit0j	
+     	
 c     start main loop through variables to find best split
       critmax = -1.0e25
+      critmaxj = 1.0e25    
       do k = 1, mred
          mind(k) = k
       end do
@@ -442,6 +273,15 @@ c     Split on a numerical predictor.
             rrd = pdo
             rln = 0
             rld = 0
+c      THE JA equivalents to the 4 lines above
+	    rrnj = pnoj
+            rrdj = pdoj
+            rlnj = 0
+            rldj = 0
+c     plus others we need that for breiman are passed in
+c            nbestj = 0
+c            msplitj = 0
+
             call zervr(wl, nclass)
             do j = 1, nclass
                wr(j) = tclasspop(j)
@@ -455,18 +295,58 @@ c     Split on a numerical predictor.
                rrn = rrn + u * (-2 * wr(k) + u)
                rld = rld + u
                rrd = rrd - u
+c              JA:
+	       temp = 0
+	       temp2 = 0	
+	       do j = 1, nclass
+		    temp = temp + u*wr(j)*lossmat((j-1) * nclass + k)
+		    temp = temp + u*wr(j)*lossmat((k-1) * nclass + j)
+		    temp2 = temp2 + u*wl(j)*lossmat((j-1) * nclass + k)
+                    temp2 = temp2 + u*wl(j)*lossmat((k-1) * nclass + j)
+	       end do
+               rlnj = rlnj + temp2
+               rrnj = rrnj - temp
+               rldj = rldj + u
+               rrdj = rrdj - u
+c	       PRINT *, rlnj
                wl(k) = wl(k) + u
                wr(k) = wr(k) - u
                if (b(mvar, nc) .lt. b(mvar, a(mvar, nsp + 1))) then
 c     If neither nodes is empty, check the split.
                   if (dmin1(rrd, rld) .gt. 1.0e-5) then
                      crit = (rln / rld) + (rrn / rrd)
+		     critj = (rlnj / rldj) + (rrnj / rrdj)
+		     PRINT *, "-------------------------"
+		     PRINT *, "BREIMAN:  crit, critmax  "
+		     PRINT *, crit
+		     PRINT *, critmax
+		     PRINT *, "JA:  crit, critmax  "
+		     PRINT *, critj
+		     PRINT *, critmaxj		     	
+		     PRINT *, "-------------------------"	
                      if (crit .gt. critmax) then
                         nbest = nsp
                         critmax = crit
                         msplit = mvar
                         ntie = 1
                      end if
+c                    JA
+		     if(critj .lt. critmaxj) then
+			critmaxj = critj
+                        nbestj = nsp
+                        msplitj = mvar
+c			ntiej = 1
+		     end if		
+c     compare Breiman's with ours:
+		     PRINT *, "-------------------------"
+		     PRINT *, "BREIMAN:  nbest, msplit  "
+		     PRINT *, nbest
+		     PRINT *, msplit
+		     PRINT *, "JA:  nbestj, msplitj "
+		     PRINT *, nbestj
+		     PRINT *, msplitj
+		     PRINT *, "-------------------------"
+
 c     Break ties at random:
                      if (crit .eq. critmax) then
                         call rrand(xrand)

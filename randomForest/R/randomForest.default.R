@@ -31,12 +31,12 @@ mylevels <- function(x) if (is.factor(x)) levels(x) else 0
 	##### ja: checking of lossmat.
 	if(is.null(lossmat)){
 		nclass <- length(levels(y))
-		lossmat <- matrix(-1,ncol=nclass,nrow=nclass); diag(lossmat)=0
+		lossmat <- matrix(1,ncol=nclass,nrow=nclass); diag(lossmat)=0
 		lossmat <- c(lossmat)
 	}
 	else{
 		##### ja: add error checking here regarding names, off-diags etc.
-		lossmat <- -1*c(lossmat)  #coerce into a vector. col1,col2,col3,...
+		lossmat <- c(lossmat)  #coerce into a vector. col1,col2,col3,...
 	}  
 	
 	
